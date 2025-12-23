@@ -1,0 +1,722 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ $('Formata JSON Final').first().json }}",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                2224,
+                264
+            ],
+            "id": "7f0aed63-5f44-4c6c-872c-099cc4d00088",
+            "name": "Retorna ao Bubble"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://depmppqvghkrjbrnuyhk.supabase.co/rest/v1/ariano_cache_matches?on_conflict=user_id",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "supabaseApi",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Prefer",
+                            "value": "resolution=merge-duplicates"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"user_id\": \"{{ $(\"Organiza Dados para LLM\").first().json.user_id }}\",\n  \"match_result\": {{ JSON.stringify($json) }}\n}",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                2224,
+                456
+            ],
+            "id": "f6c42416-789e-4f80-bbea-8e770040a097",
+            "name": "Salva Cache (HTTP)",
+            "credentials": {
+                "supabaseApi": {
+                    "id": "HfnhVYJnRA3s9iZm",
+                    "name": "Supabase account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const arianoText = $json.content.parts[0].text;\nconst matches = $(\"Organiza Dados para LLM\").first().json.matches;\n\nreturn {\n    json: {\n        ariano_message: arianoText,\n        matches: matches\n    }\n};"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                2000,
+                360
+            ],
+            "id": "7044e86b-ee35-4274-af9a-d09470f39dc1",
+            "name": "Formata JSON Final"
+        },
+        {
+            "parameters": {
+                "modelId": {
+                    "__rl": true,
+                    "value": "models/gemini-2.0-flash",
+                    "mode": "list",
+                    "cachedResultName": "models/gemini-2.0-flash"
+                },
+                "messages": {
+                    "values": [
+                        {
+                            "content": "=Você é Ariano, o conector visionário do ecossistema de inovação do Recife. \n\nAnalise o perfil deste usuário: \n{{ $json.user_text }}\n\nE estas oportunidades encontradas para ele:\n{{ JSON.stringify($json.matches) }}\n\nSua missão: Escreva um breve parágrafo (máximo 4 linhas) falando diretamente com o usuário, explicando por que essas oportunidades são estratégicas para o perfil dele. Seja cordial, inspirador e use uma linguagem local sutil (Recife). Não liste os desafios novamente, apenas \"venda\" a conexão."
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.googleGemini",
+            "typeVersion": 1,
+            "position": [
+                1648,
+                360
+            ],
+            "id": "374e5ee3-ce57-4a6a-88e0-b0cd7f73d63a",
+            "name": "Ariano (LLM)",
+            "credentials": {
+                "googlePalmApi": {
+                    "id": "ABQNHc2GwoEtZHGk",
+                    "name": "Google Gemini(PaLM) Api account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Pega todos os matches e o texto do usuário\nconst matches = $(\"Supabase RPC (Match)\").all().map(i => i.json);\nconst user = $(\"Prepara Texto Usuário\").first().json;\n\nreturn {\n  json: {\n    user_text: user.user_text,\n    user_id: user.user_id,\n    matches: matches\n  }\n};"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1424,
+                360
+            ],
+            "id": "e8ec2eae-98e0-4b33-b316-9dd88dacc7f7",
+            "name": "Organiza Dados para LLM"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://depmppqvghkrjbrnuyhk.supabase.co/rest/v1/rpc/match_ariano",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "supabaseApi",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "query_embedding",
+                            "value": "={{ $json.embedding.values }}"
+                        },
+                        {
+                            "name": "match_threshold",
+                            "value": 0
+                        },
+                        {
+                            "name": "match_count",
+                            "value": 3
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1200,
+                360
+            ],
+            "id": "067be8a7-26ac-44b8-ba3e-74e7027bbe84",
+            "name": "Supabase RPC (Match)",
+            "credentials": {
+                "supabaseApi": {
+                    "id": "HfnhVYJnRA3s9iZm",
+                    "name": "Supabase account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"content\": {\n    \"parts\": [\n      {\n        \"text\": {{ JSON.stringify($json.user_text) }}\n      }\n    ]\n  }\n}",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                976,
+                360
+            ],
+            "id": "52fbb597-db42-4f17-baef-63c27faead20",
+            "name": "Vetoriza Usuário",
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "HyENDkyySI0YBsBh",
+                    "name": "Gemini embeddings"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const response = $json.response;\nconst user = response.user || {};\nconst talento = response.talento || {};\nconst texto = `Nome: ${user.name}\\nAtuação: ${talento.atuacao}\\nCategorias: ${talento.Categorias}`;\n\nreturn {\n  json: {\n    user_id: user._id,\n    user_text: texto\n  }\n};"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                752,
+                360
+            ],
+            "id": "598b8e41-3035-4e84-8a08-9cda9fa2dc23",
+            "name": "Prepara Texto Usuário"
+        },
+        {
+            "parameters": {
+                "url": "https://coretosecti.bubbleapps.io/version-test/api/1.1/wf/matchmakinguser",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                528,
+                360
+            ],
+            "id": "341418dd-6794-4097-b060-c8ac26cfe046",
+            "name": "Busca dados usuário"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ $json[0].match_result }}",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                528,
+                168
+            ],
+            "id": "a298ba0d-7687-4bb5-9cd6-9dbf613d9675",
+            "name": "Retorna Cache"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ Object.keys($json).length > 0 }}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                304,
+                264
+            ],
+            "id": "87b5a009-be7e-4008-abb3-0d06a29acea1",
+            "name": "Tem Cache?"
+        },
+        {
+            "parameters": {
+                "url": "=https://depmppqvghkrjbrnuyhk.supabase.co/rest/v1/ariano_cache_matches",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "supabaseApi",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "user_id",
+                            "value": "={{ $json.user_query }}"
+                        },
+                        {
+                            "name": "select",
+                            "value": "match_result"
+                        },
+                        {
+                            "name": "limit",
+                            "value": "1"
+                        },
+                        {
+                            "name": "order",
+                            "value": "created_at.desc"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                80,
+                264
+            ],
+            "id": "efb7e0dc-42d3-48ee-bd8c-67d23424ce5a",
+            "name": "Verifica Cache (v2)",
+            "alwaysOutputData": true,
+            "credentials": {
+                "supabaseApi": {
+                    "id": "HfnhVYJnRA3s9iZm",
+                    "name": "Supabase account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "values": {
+                    "string": [
+                        {
+                            "name": "user_id",
+                            "value": "1754651855330x799357213987587700"
+                        },
+                        {
+                            "name": "user_query",
+                            "value": "eq.1754651855330x799357213987587700"
+                        },
+                        {
+                            "name": "date_query",
+                            "value": "gte.2025-12-18"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 2,
+            "position": [
+                -144,
+                264
+            ],
+            "id": "30713ae7-cffc-4f92-8f65-08173b683d4e",
+            "name": "Entrada de Teste"
+        },
+        {
+            "parameters": {},
+            "type": "n8n-nodes-base.manualTrigger",
+            "typeVersion": 1,
+            "position": [
+                -368,
+                264
+            ],
+            "id": "4b37c943-62a2-41e9-8d93-29cae184499b",
+            "name": "When clicking ‘Execute workflow’"
+        },
+        {
+            "parameters": {
+                "url": "http://coretosecti.bubbleapps.io/version-test/api/1.1/wf/ingest_desafio",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                -144,
+                -56
+            ],
+            "id": "9be77ce9-bd59-4116-8629-2d41b94b43e5",
+            "name": "Busca Desafios (Bubble)"
+        },
+        {
+            "parameters": {
+                "jsCode": "const response = $input.item.json.response;\nconst desafios = response.desafios || [];\nreturn desafios.map(d => ({ json: d }));"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                80,
+                -56
+            ],
+            "id": "167b1b62-9ae0-4ea1-af82-44ac17768fbe",
+            "name": "Separa Desafios"
+        },
+        {
+            "parameters": {
+                "jsCode": "const item = $input.item.json;\nconst nome = item.nome || item['Nome'] || 'Sem Título';\nconst resumo = item.resumo || item['Resumo'] || '';\nconst problema = item.problema || item['Problema'] || '';\nconst dor = item.dor || item['Dor'] || '';\nconst categorias = item.Categorias || item['categorias'] || [];\nconst id_bubble = item._id;\n\nconst texto = `Título: ${nome}\nResumo: ${resumo}\nProblema: ${problema}\nDor: ${dor}\nCategorias: ${Array.isArray(categorias) ? categorias.join(', ') : categorias}`;\n\nconst metadata = {\n  tipo: \"desafio\",\n  ativo: true,\n  validade: item.validade,\n  link_externo: item['desafio link externo'],\n  imagem: item.imagem,\n  categorias: categorias\n};\n\nreturn {\n  json: {\n    id_bubble: id_bubble,\n    text_to_vector: texto,\n    metadata: metadata\n  }\n};"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                528,
+                -128
+            ],
+            "id": "32e8256d-bb07-47b1-a281-d50c67aa761e",
+            "name": "Prepara Texto e Metadata"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"content\": {\n    \"parts\": [\n      {\n        \"text\": {{ JSON.stringify($json.text_to_vector) }}\n      }\n    ]\n  }\n}",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                752,
+                -128
+            ],
+            "id": "0ec037d7-d1f6-4006-a471-25de47bb6f66",
+            "name": "Google Embedding (004)",
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "HyENDkyySI0YBsBh",
+                    "name": "Gemini embeddings"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://depmppqvghkrjbrnuyhk.supabase.co/rest/v1/ariano_knowledge",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "supabaseApi",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"id\": \"{{ $node['Prepara Texto e Metadata'].json.id_bubble }}\",\n  \"content\": {{ JSON.stringify($node['Prepara Texto e Metadata'].json.text_to_vector) }},\n  \"metadata\": {{ JSON.stringify($node['Prepara Texto e Metadata'].json.metadata) }},\n  \"embedding\": {{ JSON.stringify($json.embedding.values) }}\n}",
+                "options": {
+                    "response": {
+                        "response": {
+                            "fullResponse": true
+                        }
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                976,
+                -56
+            ],
+            "id": "069a7ded-181b-4f04-94c2-5f7971e45a0f",
+            "name": "Upsert Supabase (HTTP)",
+            "credentials": {
+                "supabaseApi": {
+                    "id": "HfnhVYJnRA3s9iZm",
+                    "name": "Supabase account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "type": "n8n-nodes-base.splitInBatches",
+            "typeVersion": 3,
+            "position": [
+                304,
+                -56
+            ],
+            "id": "001bdf55-6931-4245-aae3-8e19b79bbada",
+            "name": "Loop Item"
+        },
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {}
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.3,
+            "position": [
+                -368,
+                -56
+            ],
+            "id": "01aecefc-4fce-4972-bd8f-aecef2f19bdc",
+            "name": "Schedule Trigger"
+        }
+    ],
+    "connections": {
+        "Formata JSON Final": {
+            "main": [
+                [
+                    {
+                        "node": "Retorna ao Bubble",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Salva Cache (HTTP)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Ariano (LLM)": {
+            "main": [
+                [
+                    {
+                        "node": "Formata JSON Final",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Organiza Dados para LLM": {
+            "main": [
+                [
+                    {
+                        "node": "Ariano (LLM)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Supabase RPC (Match)": {
+            "main": [
+                [
+                    {
+                        "node": "Organiza Dados para LLM",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Vetoriza Usuário": {
+            "main": [
+                [
+                    {
+                        "node": "Supabase RPC (Match)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepara Texto Usuário": {
+            "main": [
+                [
+                    {
+                        "node": "Vetoriza Usuário",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Busca dados usuário": {
+            "main": [
+                [
+                    {
+                        "node": "Prepara Texto Usuário",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Tem Cache?": {
+            "main": [
+                [
+                    {
+                        "node": "Retorna Cache",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Busca dados usuário",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Verifica Cache (v2)": {
+            "main": [
+                [
+                    {
+                        "node": "Tem Cache?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Entrada de Teste": {
+            "main": [
+                [
+                    {
+                        "node": "Verifica Cache (v2)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "When clicking ‘Execute workflow’": {
+            "main": [
+                [
+                    {
+                        "node": "Entrada de Teste",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Busca Desafios (Bubble)": {
+            "main": [
+                [
+                    {
+                        "node": "Separa Desafios",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Separa Desafios": {
+            "main": [
+                [
+                    {
+                        "node": "Loop Item",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepara Texto e Metadata": {
+            "main": [
+                [
+                    {
+                        "node": "Google Embedding (004)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Google Embedding (004)": {
+            "main": [
+                [
+                    {
+                        "node": "Upsert Supabase (HTTP)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Upsert Supabase (HTTP)": {
+            "main": [
+                [
+                    {
+                        "node": "Loop Item",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Loop Item": {
+            "main": [
+                [
+                    {
+                        "node": "Prepara Texto e Metadata",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Prepara Texto e Metadata",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Schedule Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Busca Desafios (Bubble)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {
+        "Busca dados usuário": [
+            {
+                "status": "success",
+                "response": {
+                    "user": {
+                        "_id": "1754651855330x799357213987587700",
+                        "name": "Gabre",
+                        "Created Date": 1754651855330,
+                        "authentication": {
+                            "email": {
+                                "email": "gabrielchamie@gritesolucoes.com.br",
+                                "email_confirmed": null
+                            }
+                        },
+                        "activeProfile": [
+                            "Talento",
+                            "Resolvedor"
+                        ],
+                        "user_signed_up": true,
+                        "Modified Date": 1754651913555,
+                        "isAdmin": false,
+                        "CPF": "0956546554",
+                        "current": "Resolvedor"
+                    },
+                    "talento": {
+                        "usuario": "1754651855330x799357213987587700",
+                        "genero": "Masculino",
+                        "estado": "PE",
+                        "Modified Date": 1754651913647,
+                        "Whatsapp": 81996894297,
+                        "Created By": "1754651855330x799357213987587700",
+                        "_id": "1754651912327x751309887706234900",
+                        "Categorias": [
+                            "EdTech",
+                            " Inovação aberta",
+                            " Educação",
+                            " Empreendedorismo",
+                            " Tecnologia da Informação"
+                        ],
+                        "nascimento": 762750000000,
+                        "atuacao": "Atuo com empreendedorismo e Inovação! Foco em educação",
+                        "Created Date": 1754651913640
+                    }
+                }
+            }
+        ]
+    },
+    "meta": {
+        "instanceId": "71ed6397921e260536db33df1a732dd2e54d8e7c9783e901c5c88b8790105c6b"
+    }
+}
